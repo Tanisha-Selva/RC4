@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC4 Stream Cipher — Virtual Labs</title>
+    <style>
+        /* ==========================================================================
+           1. WARM PASTEL VIRTUAL LABS PALETTE & DESIGN TOKENS
+           ========================================================================== */
+        :root {
+            --blush: #FFCED8;          /* Top header, active accents, pointer i */
+            --pale-rose: #FFDDDD;      /* Card headers, callouts, pointer j */
+            --warm-cream: #FFF4DE;     /* Page background, inputs, default S-Box cells */
+            --soft-peach: #FFE8C4;     /* Horizontal nav bar, table stripes, badges */
+            --surface: #FFFFFF;        /* Crisp card surface */
+            --border: #E8C6CE;         /* Subtle warm rose border */
+            --berry-dark: #2B1E23;     /* High-contrast primary text & headings */
+            --plum-muted: #594A4E;     /* Secondary labels & subtitles */
+            --rose-plum: #8C2D4A;      /* Primary buttons, active tab, strong accents */
+            --rose-accent: #B83B5E;    /* Hover states & interactive borders */
+            --sage-bg: #D1FAE5;        /* Verified / output keystream S[t] highlight */
+            --sage-border: #059669;
+            --amber-border: #D97706;
+            --shadow-card: 0 4px 16px rgba(140, 45, 74, 0.08);
+            --shadow-sm: 0 2px 6px rgba(140, 45, 74, 0.06);
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --radius-sm: 6px;
+            --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        /* ==========================================================================
+           2. RESET & BASE TYPOGRAPHY
+           ========================================================================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--warm-cream);
+            color: var(--berry-dark);
+            line-height: 1.55;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ==========================================================================
+           3. COMPACT VIRTUAL LABS PORTAL HEADER & HORIZONTAL TAB BAR
+           ========================================================================== */
+        .vlab-header {
+            background-color: var(--blush);
+            border-bottom: 2px solid var(--rose-accent);
+            padding: 14px 20px;
+        }
+
+        .header-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .brand-meta {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--rose-plum);
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--berry-dark);
+            line-height: 1.25;
+        }
+
+        .breadcrumb-pill {
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--plum-muted);
+        }
+
+        .breadcrumb-pill strong {
+            color: var(--rose-plum);
+        }
+
+        /* Compact Horizontal Pill Navigation Bar */
+        .vlab-nav {
+            background-color: var(--soft-peach);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            padding: 8px 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .nav-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            border: 1px solid transparent;
+            background-color: transparent;
+            color: var(--berry-dark);
+            font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 7px 15px;
+            border-radius: 999px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .tab-btn:hover {
+            background-color: var(--pale-rose);
+            border-color: var(--border);
+            color: var(--rose-plum);
+        }
+
+        .tab-btn.active {
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ==========================================================================
+           4. MAIN WORKSPACE & TAB VISIBILITY
+           ========================================================================== */
+        .main-wrapper {
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px 20px 44px;
+            flex: 1;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==========================================================================
+           5. CARDS, CALLOUTS, FORMULAS & TABLES
+           ========================================================================== */
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: var(--pale-rose);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .card-header h2, .card-header h3 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--berry-dark);
+        }
+
+        .card-body {
+            padding: 18px;
+        }
+
+        .pill-badge {
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background-color: var(--soft-peach);
+            color: var(--rose-plum);
+            border: 1px solid var(--border);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .mini-card {
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+        }
+
+        .mini-card h4 {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--rose-plum);
+            margin-bottom: 6px;
+        }
+
+        .mini-card p {
+            font-size: 13.5px;
+            color: var(--berry-dark);
+        }
+
+        .intuition-box {
+            background-color: var(--pale-rose);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--rose-plum);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .intuition-box h4 {
+            font-size: 14.5px;
+            font-weight: 800;
+            color: var(--rose-plum);
+            margin-bottom: 6px;
+        }
+
+        .intuition-box ul {
+            padding-left: 18px;
+            font-size: 13.5px;
+            color: var(--berry-dark);
+        }
+
+        .intuition-box li {
+            margin-bottom: 4px;
+        }
+
+        .formula-card {
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--rose-accent);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--berry-dark);
+            line-height: 1.65;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .clean-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            margin-top: 10px;
+        }
+
+        .clean-table th {
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            text-align: left;
+            padding: 9px 12px;
+            font-weight: 700;
+        }
+
+        .clean-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .clean-table tr:nth-child(even) td {
+            background-color: var(--soft-peach);
+        }
+
+        /* ==========================================================================
+           6. BUTTONS, INPUTS & SIMULATION CONTROLS
+           ========================================================================== */
+        .presets-bar {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 12px 16px;
+            margin-bottom: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            border-color: var(--rose-plum);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--rose-accent);
+            border-color: var(--rose-accent);
+        }
+
+        .btn-soft {
+            background-color: var(--blush);
+            color: var(--berry-dark);
+            border-color: var(--rose-accent);
+        }
+
+        .btn-soft:hover:not(:disabled) {
+            background-color: var(--pale-rose);
+        }
+
+        .btn-peach {
+            background-color: var(--soft-peach);
+            color: var(--berry-dark);
+            border-color: #D9B08C;
+        }
+
+        .btn-peach:hover:not(:disabled) {
+            background-color: #FAD9A6;
+        }
+
+        .btn-outline {
+            background-color: var(--surface);
+            color: var(--berry-dark);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background-color: var(--warm-cream);
+            border-color: var(--rose-plum);
+        }
+
+        .btn-xs {
+            padding: 4px 9px;
+            font-size: 12px;
+        }
+
+        .sim-main-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .field-group {
+            margin-bottom: 14px;
+        }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--berry-dark);
+        }
+
+        .field-sub {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--plum-muted);
+        }
+
+        .toggle-pill {
+            display: inline-flex;
+            background-color: var(--soft-peach);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .toggle-pill button {
+            border: none;
+            background: transparent;
+            padding: 3px 9px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--plum-muted);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .toggle-pill button.active {
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+        }
+
+        .input-control, .textarea-control, .select-control {
+            width: 100%;
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 9px 12px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--berry-dark);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .select-control {
+            font-family: var(--font-sans);
+            font-weight: 600;
+            width: auto;
+            padding: 7px 10px;
+        }
+
+        .input-control:focus, .textarea-control:focus, .select-control:focus {
+            outline: none;
+            border-color: var(--rose-accent);
+            box-shadow: 0 0 0 3px rgba(184, 59, 94, 0.16);
+        }
+
+        .textarea-control {
+            min-height: 72px;
+            resize: vertical;
+        }
+
+        .output-panel {
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .code-output {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            color: var(--berry-dark);
+            word-break: break-all;
+            min-height: 36px;
+            max-height: 86px;
+            overflow-y: auto;
+        }
+
+        .verified-banner {
+            display: none;
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            background-color: var(--sage-bg);
+            border: 1px solid var(--sage-border);
+            color: #065F46;
+            font-size: 12.5px;
+            font-weight: 700;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .verified-banner.show {
+            display: flex;
+        }
+
+        /* ==========================================================================
+           7. S-BOX MATRIX VISUALIZER & STEP CONTROLLER
+           ========================================================================== */
+        .legend-strip {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        .step-log-banner {
+            background-color: var(--soft-peach);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--rose-plum);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--berry-dark);
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .sbox-matrix {
+            display: grid;
+            grid-template-columns: repeat(16, minmax(0, 1fr));
+            gap: 2px;
+            background-color: var(--border);
+            padding: 3px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .sbox-matrix.mini-mode {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            padding: 8px;
+            max-width: 300px;
+            margin: 10px auto;
+        }
+
+        .sbox-cell {
+            background-color: var(--warm-cream);
+            color: var(--berry-dark);
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            text-align: center;
+            padding: 4px 1px;
+            border-radius: 2px;
+            user-select: none;
+            transition: transform 0.1s ease, background-color 0.12s ease;
+        }
+
+        .mini-mode .sbox-cell {
+            font-size: 14px;
+            padding: 12px 4px;
+            border-radius: 5px;
+        }
+
+        .sbox-cell.hl-i {
+            background-color: var(--blush) !important;
+            outline: 2px solid var(--rose-accent);
+            z-index: 2;
+            transform: scale(1.08);
+        }
+
+        .sbox-cell.hl-j {
+            background-color: var(--soft-peach) !important;
+            outline: 2px solid var(--amber-border);
+            z-index: 2;
+            transform: scale(1.08);
+        }
+
+        .sbox-cell.hl-ij {
+            background: linear-gradient(135deg, var(--blush) 50%, var(--soft-peach) 50%) !important;
+            outline: 2px solid var(--rose-plum);
+            z-index: 3;
+            transform: scale(1.1);
+        }
+
+        .sbox-cell.hl-t {
+            background-color: var(--sage-bg) !important;
+            outline: 2px solid var(--sage-border);
+            color: #065F46;
+            z-index: 3;
+            transform: scale(1.12);
+        }
+
+        .step-controls-box {
+            background-color: var(--pale-rose);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--plum-muted);
+        }
+
+        .speed-control input[type="range"] {
+            flex: 1;
+            accent-color: var(--rose-plum);
+        }
+
+        /* ==========================================================================
+           8. BYTE-BY-BYTE TRACE TABLE
+           ========================================================================== */
+        .trace-scroll {
+            overflow-x: auto;
+            max-height: 310px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+
+        .trace-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+
+        .trace-table th {
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            padding: 9px 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+
+        .trace-table td {
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .trace-table tr:nth-child(even) td {
+            background-color: var(--soft-peach);
+        }
+
+        .trace-table tr:nth-child(odd) td {
+            background-color: var(--surface);
+        }
+
+        .trace-table tr.latest-row td {
+            background-color: var(--blush);
+            font-weight: 700;
+        }
+
+        /* ==========================================================================
+           9. SELF-EVALUATION QUIZ & TOAST
+           ========================================================================== */
+        .quiz-card {
+            background-color: var(--warm-cream);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .quiz-question {
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--berry-dark);
+            margin-bottom: 8px;
+        }
+
+        .quiz-opt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 13.5px;
+        }
+
+        .quiz-opt:hover {
+            background-color: var(--pale-rose);
+        }
+
+        .quiz-result {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .quiz-result.pass {
+            display: block;
+            background-color: var(--sage-bg);
+            border: 1px solid var(--sage-border);
+            color: #065F46;
+        }
+
+        .quiz-result.fail {
+            display: block;
+            background-color: var(--blush);
+            border: 1px solid var(--rose-accent);
+            color: var(--rose-plum);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            background-color: var(--rose-plum);
+            color: var(--warm-cream);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--blush);
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: var(--shadow-card);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .vlab-footer {
+            background-color: var(--pale-rose);
+            border-top: 1px solid var(--border);
+            text-align: center;
+            padding: 12px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--plum-muted);
+        }
+
+        /* ==========================================================================
+           10. RESPONSIVE BREAKPOINTS
+           ========================================================================== */
+        @media (max-width: 960px) {
+            .sim-main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .vlab-header {
+                padding: 12px 14px;
+            }
+            .brand-title {
+                font-size: 1.05rem;
+            }
+            .main-wrapper {
+                padding: 14px 12px 32px;
+            }
+            .sbox-cell {
+                font-size: 9px;
+                padding: 3px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Institutional Virtual Labs Banner -->
+    <header class="vlab-header">
+        <div class="header-container">
+            <div class="brand-wrap">
+                <div class="brand-logo" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div>
+                    
+                    <h1 class="brand-title">Experiment: RC4 Stream Cipher (Rivest Cipher 4)</h1>
+                </div>
+            </div>
+            <div class="breadcrumb-pill" style="font-size: 11px; text-transform: lowercase; letter-spacing: 0.02em; color: var(--rose-plum);">
+                AKSHAYA C V &middot; SRINIJA C S G &middot;  TANISHA S
+            </div>
+        </div>
+    </header>
+
+    <!-- Compact Horizontal Pill Navigation Bar -->
+    <nav class="vlab-nav" aria-label="Experiment Sections">
+        <div class="nav-container">
+            <button class="tab-btn" data-tab="aim" onclick="switchTab('aim')">Aim</button>
+            <button class="tab-btn" data-tab="theory" onclick="switchTab('theory')">Theory</button>
+            <button class="tab-btn" data-tab="procedure" onclick="switchTab('procedure')">Procedure</button>
+            <button class="tab-btn active" data-tab="simulation" onclick="switchTab('simulation')">Simulation</button>
+            <button class="tab-btn" data-tab="quiz" onclick="switchTab('quiz')">Self-Evaluation</button>
+            <button class="tab-btn" data-tab="references" onclick="switchTab('references')">References</button>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="main-wrapper">
+
+        <!-- ==================== TAB 1: AIM ==================== -->
+        <section id="tab-aim" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2>1. Aim of the Experiment</h2>
+                    <span class="pill-badge">Symmetric Stream Cipher</span>
+                </div>
+                <div class="card-body">
+                    <p style="font-size: 14.5px; margin-bottom: 10px;">
+                        To understand and simulate the <strong>RC4 (Rivest Cipher 4) Stream Cipher</strong>, observing how a secret key initializes a 256-byte state array (KSA) and generates a pseudo-random keystream (PRGA) for byte-by-byte XOR encryption and decryption.
+                    </p>
+                    <div class="grid-3">
+                        <div class="mini-card">
+                            <h4>Outcome 1: State Permutation (KSA)</h4>
+                            <p>Visualize how the Key-Scheduling Algorithm scrambles the ordered array <code>S[0..255]</code> using a variable-length secret key.</p>
+                        </div>
+                        <div class="mini-card">
+                            <h4>Outcome 2: Keystream Generation (PRGA)</h4>
+                            <p>Trace how two moving pointers (<code>i</code> and <code>j</code>) continuously swap elements and extract pseudo-random bytes <code>k</code>.</p>
+                        </div>
+                        <div class="mini-card">
+                            <h4>Outcome 3: Symmetric XOR Reversibility</h4>
+                            <p>Verify that XORing ciphertext with the exact same keystream recovers any UTF-8 plaintext without block padding.</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button class="btn btn-primary" onclick="switchTab('simulation')">Go to Simulation &rarr;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: THEORY ==================== -->
+        <section id="tab-theory" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2>2. Theory &amp; Algorithm Breakdown</h2>
+                    <span class="pill-badge">Designed by Ron Rivest (1987)</span>
+                </div>
+                <div class="card-body">
+                    <!-- 20-Second Card-Shuffling Intuition -->
+                    <div class="intuition-box">
+                        <h4>20-Second Card-Shuffling Intuition</h4>
+                        <ul>
+                            <li><strong>The Deck:</strong> Imagine 256 numbered cards (<code>0</code> to <code>255</code>) arranged in order inside an array <code>S</code>.</li>
+                            <li><strong>Step 1 — KSA (Shuffle):</strong> Use your secret key to shuffle those 256 cards into a unique, secret arrangement.</li>
+                            <li><strong>Step 2 — PRGA (Draw):</strong> For each byte of your message, swap two cards and pick one card's number as your secret keystream byte <code>k</code>.</li>
+                            <li><strong>Step 3 — XOR Lock:</strong> Combine your message byte with <code>k</code> using XOR (<code>&oplus;</code>). Because <code>(P &oplus; k) &oplus; k = P</code>, the receiver uses the same key to unlock the exact message.</li>
+                        </ul>
+                    </div>
+
+                    <div class="grid-2">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--rose-plum); margin-bottom: 4px;">Phase 1: Key-Scheduling Algorithm (KSA)</h3>
+                            <p style="font-size: 13.5px; color: var(--plum-muted);">Initializes <code>S[i] = i</code> and scrambles <code>S</code> over 256 iterations using key <code>K</code> of byte length <code>L</code>:</p>
+                            <div class="formula-card">
+                                for i = 0 to 255: S[i] = i<br>
+                                j = 0<br>
+                                for i = 0 to 255:<br>
+                                &nbsp;&nbsp;j = (j + S[i] + K[i mod L]) mod 256<br>
+                                &nbsp;&nbsp;swap(S[i], S[j])
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 800; color: var(--rose-plum); margin-bottom: 4px;">Phase 2: Pseudo-Random Generation (PRGA)</h3>
+                            <p style="font-size: 13.5px; color: var(--plum-muted);">Generates one keystream byte <code>k</code> per data byte and applies bitwise XOR:</p>
+                            <div class="formula-card">
+                                i = (i + 1) mod 256<br>
+                                j = (j + S[i]) mod 256<br>
+                                swap(S[i], S[j])<br>
+                                t = (S[i] + S[j]) mod 256<br>
+                                k = S[t] &nbsp;&nbsp;// Output keystream byte<br>
+                                C = P &oplus; k &nbsp;// Encrypt (P = C &oplus; k to Decrypt)
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--rose-plum); margin: 14px 0 6px;">Stream Cipher vs. Block Cipher</h3>
+                    <table class="clean-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>RC4 (Stream Cipher)</th>
+                                <th>AES / DES (Block Ciphers)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Processing Unit</strong></td>
+                                <td>1 byte (8 bits) at a time</td>
+                                <td>Fixed blocks (16 bytes for AES, 8 bytes for DES)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Padding Required?</strong></td>
+                                <td>No — works on any input length natively</td>
+                                <td>Yes (PKCS#7 padding required)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Encrypt / Decrypt Logic</strong></td>
+                                <td>Identical function (<code>XOR</code> with keystream)</td>
+                                <td>Separate inverse round transformations</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="intuition-box" style="margin-top: 14px; margin-bottom: 0; background-color: var(--soft-peach);">
+                        <h4>Security Note (WEP &amp; TLS Deprecation — RFC 7465)</h4>
+                        <p style="font-size: 13px; margin: 0;">
+                            RC4 was widely used in WEP Wi-Fi and early SSL/TLS. However, statistical biases in its early keystream bytes enabled the <strong>FMS (Fluhrer–Mantin–Shamir)</strong> key-recovery attack, leading modern TLS 1.3 to replace RC4 with ChaCha20-Poly1305 and AES-GCM.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: PROCEDURE ==================== -->
+        <section id="tab-procedure" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2>3. Laboratory Procedure</h2>
+                    <span class="pill-badge">5 Simple Steps</span>
+                </div>
+                <div class="card-body">
+                    <ol style="padding-left: 20px; font-size: 14px; line-height: 1.9; color: var(--berry-dark);">
+                        <li><strong>Open Simulation Tab:</strong> Click <em>Simulation</em> in the top navigation bar.</li>
+                        <li><strong>Enter Key &amp; Plaintext:</strong> Provide any Secret Key (Text or Hex) and any Plaintext message (letters, numbers, spaces, symbols, or emojis), or click <strong>Load RFC 6229 Official Test Vector</strong>.</li>
+                        <li><strong>Encrypt &amp; Inspect Output:</strong> Click <strong>Encrypt Message</strong> to view the generated Keystream (Hex), Ciphertext (Hex), and Ciphertext (Base64).</li>
+                        <li><strong>Step Through S-Box State:</strong> Use <strong>Step KSA</strong>, <strong>Step PRGA</strong>, or <strong>Auto-Play / Pause</strong> to watch pointers <code>i</code>, <code>j</code>, and <code>t</code> swap values live inside the 16&times;16 (or 4&times;4 Mini) S-Box matrix.</li>
+                        <li><strong>Verify Decryption:</strong> Click <strong>Send Ciphertext to Decryptor &rarr;</strong> and press <strong>Decrypt Ciphertext</strong> to verify exact recovery of your original UTF-8 text.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: SIMULATION ==================== -->
+        <section id="tab-simulation" class="tab-panel active">
+            <!-- Quick Presets & S-Box Mode Strip -->
+            <div class="presets-bar">
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="loadRFC6229Vector()">Load RFC 6229 Official Test Vector</button>
+                    <button class="btn btn-soft" onclick="loadSampleMessage()">Sample Message ("Hello VLab!")</button>
+                    <button class="btn btn-outline" onclick="resetAll()">Reset All</button>
+                </div>
+                <div class="btn-group">
+                    <label for="sbox-mode-select" style="font-size: 12.5px; font-weight: 700; color: var(--plum-muted);">S-Box Mode:</label>
+                    <select id="sbox-mode-select" class="select-control" onchange="onSBoxModeChange()">
+                        <option value="256" selected>Standard 256-Byte (16&times;16)</option>
+                        <option value="16">Mini 16-Byte (4&times;4 Viva Trace)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Two-Column Workbench: Encrypt/Decrypt + Live S-Box Visualizer -->
+            <div class="sim-main-grid">
+                <!-- Left Column: Encryption & Decryption Workbench -->
+                <div>
+                    <!-- Encryption Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>1. Encryption Workbench</h3>
+                            <span class="pill-badge" id="enc-byte-badge">UTF-8 Any Input</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="field-group">
+                                <div class="field-header">
+                                    <label for="enc-key-input">Secret Key (K)</label>
+                                    <div class="toggle-pill" role="group" aria-label="Key Input Format">
+                                        <button id="key-fmt-text" class="active" onclick="setKeyFormat('text')">Text</button>
+                                        <button id="key-fmt-hex" onclick="setKeyFormat('hex')">Hex</button>
+                                    </div>
+                                </div>
+                                <input type="text" id="enc-key-input" class="input-control" value="SecretKey" placeholder="Enter secret key..." oninput="onWorkbenchInput()">
+                            </div>
+
+                            <div class="field-group">
+                                <div class="field-header">
+                                    <label for="enc-plain-input">Plaintext Message (P)</label>
+                                    <span class="field-sub" id="plain-byte-count">0 bytes</span>
+                                </div>
+                                <textarea id="enc-plain-input" class="textarea-control" placeholder="Type any text, numbers, symbols, multiline text, or emojis..." oninput="onWorkbenchInput()">Hello VLab! 🔐</textarea>
+                            </div>
+
+                            <div class="btn-group">
+                                <button class="btn btn-primary" onclick="runEncryption()">Encrypt Message</button>
+                                <button class="btn btn-peach" onclick="sendToDecryptor()">Send Ciphertext to Decryptor &rarr;</button>
+                            </div>
+
+                            <!-- Encryption Outputs -->
+                            <div class="output-panel">
+                                <div class="field-header">
+                                    <span>Generated Keystream (Hex)</span>
+                                    <button class="btn btn-outline btn-xs" onclick="copyElementText('out-keystream')">Copy</button>
+                                </div>
+                                <div id="out-keystream" class="code-output"></div>
+
+                                <div class="field-header" style="margin-top: 10px;">
+                                    <span>Ciphertext (Hexadecimal)</span>
+                                    <button class="btn btn-outline btn-xs" onclick="copyElementText('out-cipher-hex')">Copy</button>
+                                </div>
+                                <div id="out-cipher-hex" class="code-output"></div>
+
+                                <div class="field-header" style="margin-top: 10px;">
+                                    <span>Ciphertext (Base64)</span>
+                                    <button class="btn btn-outline btn-xs" onclick="copyElementText('out-cipher-b64')">Copy</button>
+                                </div>
+                                <div id="out-cipher-b64" class="code-output"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Decryption Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>2. Decryption Verifier</h3>
+                            <span class="pill-badge">Hex or Base64</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="field-group">
+                                <div class="field-header">
+                                    <label for="dec-key-input">Secret Key (Must Match Encryption Key)</label>
+                                    <span class="field-sub" id="dec-key-mode-hint">Format: Text</span>
+                                </div>
+                                <input type="text" id="dec-key-input" class="input-control" value="SecretKey" placeholder="Enter matching secret key...">
+                            </div>
+
+                            <div class="field-group">
+                                <div class="field-header">
+                                    <label for="dec-cipher-input">Ciphertext Input (Hex or Base64)</label>
+                                    <button class="btn btn-outline btn-xs" onclick="copyElementText('out-recovered-plain')">Copy Recovered</button>
+                                </div>
+                                <textarea id="dec-cipher-input" class="textarea-control" style="min-height: 58px;" placeholder="Paste Hex bytes or Base64 string..."></textarea>
+                            </div>
+
+                            <button class="btn btn-primary" onclick="runDecryption()">Decrypt Ciphertext</button>
+
+                            <div class="output-panel">
+                                <div class="field-header">
+                                    <span>Recovered Plaintext (UTF-8)</span>
+                                </div>
+                                <div id="out-recovered-plain" class="code-output" style="font-family: var(--font-sans); font-weight: 600;"></div>
+                                <div id="dec-verified-badge" class="verified-banner">
+                                    <span>&#10003; Verified: Recovered plaintext matches original input 100%!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Interactive S-Box State Visualizer -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 id="sbox-card-title">3. Live S-Box State Matrix (16&times;16)</h3>
+                        <span class="pill-badge" id="sbox-phase-pill">Ready</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Color-Coded Pointer Legend -->
+                        <div class="legend-strip">
+                            <span><span class="legend-dot" style="background: var(--blush); border: 1.5px solid var(--rose-accent);"></span>Pointer i</span>
+                            <span><span class="legend-dot" style="background: var(--soft-peach); border: 1.5px solid var(--amber-border);"></span>Pointer j</span>
+                            <span><span class="legend-dot" style="background: var(--sage-bg); border: 1.5px solid var(--sage-border);"></span>Output S[t]</span>
+                        </div>
+
+                        <!-- Live Step Log Banner -->
+                        <div class="step-log-banner" id="step-log-banner">
+                            <span>Identity State: S[i] = i</span>
+                            <span>i = -, j = -, t = -</span>
+                        </div>
+
+                        <!-- S-Box Grid -->
+                        <div id="sbox-grid" class="sbox-matrix" aria-label="S-Box State Matrix"></div>
+
+                        <!-- Step-by-Step Playback Controls -->
+                        <div class="step-controls-box">
+                            <div class="btn-group">
+                                <button class="btn btn-soft" onclick="stepKSA()">Step KSA</button>
+                                <button class="btn btn-soft" onclick="stepPRGA()">Step PRGA</button>
+                                <button id="btn-autoplay" class="btn btn-primary" onclick="toggleAutoPlay()">Auto-Play</button>
+                                <button class="btn btn-outline" onclick="resetSBoxOnly()">Reset S-Box</button>
+                            </div>
+                            <div class="speed-control">
+                                <span>Speed:</span>
+                                <input type="range" id="anim-speed" min="10" max="390" value="310" aria-label="Animation Speed">
+                                <span id="anim-speed-text">Fast</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Byte-by-Byte Trace Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>4. Byte-by-Byte Keystream &amp; XOR Trace</h3>
+                    <span class="pill-badge" id="trace-count-badge">0 bytes traced</span>
+                </div>
+                <div class="card-body" style="padding: 12px;">
+                    <div class="trace-scroll">
+                        <table class="trace-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Char</th>
+                                    <th>Plain Byte (Hex)</th>
+                                    <th>Pointers (i, j &rarr; t)</th>
+                                    <th>Keystream k (Hex)</th>
+                                    <th>XOR Operation</th>
+                                    <th>Cipher Byte (Hex)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trace-table-body">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--plum-muted); padding: 16px;">
+                                        Click <strong>Encrypt Message</strong> or <strong>Step PRGA</strong> to view byte-by-byte XOR steps.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 5: SELF-EVALUATION ==================== -->
+        <section id="tab-quiz" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2>5. Self-Evaluation Viva Quiz</h2>
+                    <span class="pill-badge" id="quiz-score-pill">4 Questions</span>
+                </div>
+                <div class="card-body">
+                    <div id="quiz-list"></div>
+                    <div class="btn-group" style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="submitQuiz()">Check Answers</button>
+                        <button class="btn btn-outline" onclick="initQuiz()">Reset Quiz</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 6: REFERENCES ==================== -->
+        <section id="tab-references" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <h2>6. References &amp; Credits</h2>
+                    <span class="pill-badge">Academic Sources</span>
+                </div>
+                <div class="card-body">
+                    <ul style="padding-left: 20px; font-size: 14px; line-height: 2; color: var(--berry-dark);">
+                        <li><strong>William Stallings</strong> — <em>Cryptography and Network Security: Principles and Practice</em> (Chapter 7: Stream Ciphers &amp; RC4).</li>
+                        <li><strong>IETF RFC 6229</strong> — <em>Test Vectors for the Stream Cipher RC4</em> (Used in the official RFC 6229 preset verification).</li>
+                        <li><strong>IETF RFC 7465</strong> — <em>Prohibiting RC4 Cipher Suites in TLS</em> (Cryptanalysis of initial keystream biases).</li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- Footer -->
+    <footer class="vlab-footer">
+        Virtual Labs &bull; Cryptography &amp; Network Security &bull; RC4 Stream Cipher Interactive Simulator
+    </footer>
+
+    <!-- ==========================================================================
+         11. PURE CLIENT-SIDE JAVASCRIPT ENGINE
+         ========================================================================== -->
+    <script>
+        "use strict";
+
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder("utf-8", { fatal: false });
+
+        const sim = {
+            N: 256,
+            keyFormat: "text",   // "text" | "hex"
+            S: [],
+            T: [],
+            keyBytes: new Uint8Array(),
+            plainBytes: new Uint8Array(),
+            keystreamBytes: [],
+            cipherBytes: [],
+            traceRows: [],
+            phase: "IDLE",       // "IDLE" | "KSA" | "PRGA" | "DONE"
+            ksaIdx: 0,
+            prgaIdx: 0,
+            ptrI: -1,
+            ptrJ: -1,
+            ptrT: -1,
+            timer: null
+        };
+
+        /* --------------------------------------------------------------------------
+           TAB SWITCHING & TOAST NOTIFICATIONS
+           -------------------------------------------------------------------------- */
+        function switchTab(tabName) {
+            stopAutoPlay();
+            document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            const panel = document.getElementById("tab-" + tabName);
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+            if (panel) panel.classList.add("active");
+            if (btn) btn.classList.add("active");
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const el = document.getElementById("toast");
+            el.textContent = msg;
+            el.classList.add("show");
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+        }
+
+        function copyElementText(id) {
+            const text = document.getElementById(id).textContent.trim();
+            if (!text) {
+                showToast("Nothing to copy yet.");
+                return;
+            }
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            showToast("Copied to clipboard!");
+        }
+
+        /* --------------------------------------------------------------------------
+           BYTE & ENCODING UTILITIES
+           -------------------------------------------------------------------------- */
+        function toHex(byteVal, width = 2) {
+            return byteVal.toString(16).toUpperCase().padStart(width, "0");
+        }
+
+        function bytesToHex(arr) {
+            return Array.from(arr).map(b => toHex(b)).join(" ");
+        }
+
+        function bytesToBase64(arr) {
+            if (!arr || arr.length === 0) return "";
+            let bin = "";
+            for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+            return btoa(bin);
+        }
+
+        function hexToBytes(hexStr) {
+            const clean = hexStr.replace(/0x/gi, "").replace(/[^0-9a-fA-F]/g, "");
+            if (clean.length === 0) return new Uint8Array(0);
+            if (clean.length % 2 !== 0) {
+                throw new Error("Hex input must have an even number of hex characters.");
+            }
+            const out = new Uint8Array(clean.length / 2);
+            for (let i = 0; i < clean.length; i += 2) {
+                out[i / 2] = parseInt(clean.substr(i, 2), 16);
+            }
+            return out;
+        }
+
+        function parseCipherInput(str) {
+            const trimmed = str.trim();
+            if (!trimmed) return new Uint8Array(0);
+            const compact = trimmed.replace(/\s+/g, "");
+            const looksHex = /^(0x)?[0-9a-fA-F]+$/i.test(compact.replace(/0x/gi, ""));
+            if (!looksHex) {
+                try {
+                    const bin = atob(compact);
+                    const out = new Uint8Array(bin.length);
+                    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+                    return out;
+                } catch (e) {
+                    throw new Error("Invalid Ciphertext: provide valid Hex bytes or Base64.");
+                }
+            }
+            return hexToBytes(trimmed);
+        }
+
+        function getKeyBytes(rawStr, format) {
+            if (!rawStr) throw new Error("Secret Key cannot be empty.");
+            if (format === "hex") {
+                const b = hexToBytes(rawStr);
+                if (b.length === 0) throw new Error("Enter valid hexadecimal key bytes.");
+                return b;
+            }
+            return encoder.encode(rawStr);
+        }
+
+        function printableChar(b) {
+            if (b >= 32 && b <= 126) return `'${String.fromCharCode(b)}'`;
+            if (b === 10) return "'\\n'";
+            if (b === 9) return "'\\t'";
+            return `0x${toHex(b)}`;
+        }
+
+        /* --------------------------------------------------------------------------
+           KEY FORMAT, PRESETS & INPUT HANDLING
+           -------------------------------------------------------------------------- */
+        function setKeyFormat(fmt) {
+            sim.keyFormat = fmt;
+            document.getElementById("key-fmt-text").classList.toggle("active", fmt === "text");
+            document.getElementById("key-fmt-hex").classList.toggle("active", fmt === "hex");
+            document.getElementById("dec-key-mode-hint").textContent = `Format: ${fmt === "hex" ? "Hex" : "Text"}`;
+            resetSBoxOnly();
+        }
+
+        function onWorkbenchInput() {
+            const plain = document.getElementById("enc-plain-input").value;
+            const bytes = encoder.encode(plain);
+            document.getElementById("plain-byte-count").textContent = `${bytes.length} byte${bytes.length === 1 ? "" : "s"}`;
+        }
+
+        function onSBoxModeChange() {
+            stopAutoPlay();
+            sim.N = parseInt(document.getElementById("sbox-mode-select").value, 10);
+            const grid = document.getElementById("sbox-grid");
+            const title = document.getElementById("sbox-card-title");
+            if (sim.N === 16) {
+                grid.classList.add("mini-mode");
+                title.textContent = "3. Live S-Box State Matrix (4×4 Mini)";
+            } else {
+                grid.classList.remove("mini-mode");
+                title.textContent = "3. Live S-Box State Matrix (16×16)";
+            }
+            resetSBoxOnly();
+        }
+
+        function loadRFC6229Vector() {
+            // Official IETF RFC 6229 40-bit key test vector: Key = 0102030405, 16 zero bytes
+            // Expected first 16 keystream bytes: B2 39 63 05 F0 3D C0 27 CC C3 52 4A 0A 11 18 A8
+            document.getElementById("sbox-mode-select").value = "256";
+            onSBoxModeChange();
+            setKeyFormat("hex");
+            document.getElementById("enc-key-input").value = "0102030405";
+            document.getElementById("dec-key-input").value = "0102030405";
+            document.getElementById("enc-plain-input").value = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+            onWorkbenchInput();
+            runEncryption();
+            showToast("Loaded RFC 6229 Test Vector (Keystream starts with B2 39 63 05...)");
+        }
+
+        function loadSampleMessage() {
+            setKeyFormat("text");
+            document.getElementById("enc-key-input").value = "VLabCrypto2026";
+            document.getElementById("dec-key-input").value = "VLabCrypto2026";
+            document.getElementById("enc-plain-input").value = "Hello VLab!";
+            onWorkbenchInput();
+            runEncryption();
+            showToast("Loaded Sample Message!");
+        }
+
+        function resetAll() {
+            stopAutoPlay();
+            setKeyFormat("text");
+            document.getElementById("enc-key-input").value = "SecretKey";
+            document.getElementById("dec-key-input").value = "SecretKey";
+            document.getElementById("enc-plain-input").value = "Hello VLab! 🔐";
+            document.getElementById("dec-cipher-input").value = "";
+            document.getElementById("out-recovered-plain").textContent = "";
+            document.getElementById("dec-verified-badge").classList.remove("show");
+            onWorkbenchInput();
+            resetSBoxOnly();
+            showToast("All fields reset.");
+        }
+
+        /* --------------------------------------------------------------------------
+           CORE RC4 ENGINE (KSA + PRGA + STEP-BY-STEP VISUALIZATION)
+           -------------------------------------------------------------------------- */
+        function resetSBoxOnly() {
+            stopAutoPlay();
+            const N = sim.N;
+            sim.S = Array.from({ length: N }, (_, idx) => idx);
+            sim.T = new Array(N).fill(0);
+            sim.keystreamBytes = [];
+            sim.cipherBytes = [];
+            sim.traceRows = [];
+            sim.phase = "IDLE";
+            sim.ksaIdx = 0;
+            sim.prgaIdx = 0;
+            sim.ptrI = -1;
+            sim.ptrJ = -1;
+            sim.ptrT = -1;
+
+            renderSBox();
+            setStepBanner("Identity State: S[i] = i", "i = -, j = -, t = -", "Ready");
+            document.getElementById("out-keystream").textContent = "";
+            document.getElementById("out-cipher-hex").textContent = "";
+            document.getElementById("out-cipher-b64").textContent = "";
+            document.getElementById("trace-count-badge").textContent = "0 bytes traced";
+            document.getElementById("trace-table-body").innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--plum-muted); padding: 16px;">
+                        Click <strong>Encrypt Message</strong> or <strong>Step PRGA</strong> to view byte-by-byte XOR steps.
+                    </td>
+                </tr>
+            `;
+        }
+
+        function prepareSimulationState() {
+            try {
+                const rawKey = document.getElementById("enc-key-input").value;
+                const rawPlain = document.getElementById("enc-plain-input").value;
+                sim.keyBytes = getKeyBytes(rawKey, sim.keyFormat);
+                sim.plainBytes = encoder.encode(rawPlain);
+                if (sim.plainBytes.length === 0) {
+                    showToast("Enter at least 1 character of plaintext.");
+                    return false;
+                }
+            } catch (err) {
+                showToast(err.message);
+                return false;
+            }
+
+            const N = sim.N;
+            sim.S = Array.from({ length: N }, (_, idx) => idx);
+            for (let i = 0; i < N; i++) {
+                sim.T[i] = sim.keyBytes[i % sim.keyBytes.length] % N;
+            }
+            sim.ksaIdx = 0;
+            sim.prgaIdx = 0;
+            sim.ptrI = 0;
+            sim.ptrJ = 0;
+            sim.ptrT = -1;
+            sim.phase = "KSA";
+            return true;
+        }
+
+        function stepKSA(silent = false) {
+            if (sim.phase === "IDLE") {
+                if (!prepareSimulationState()) return false;
+            }
+            if (sim.phase !== "KSA") {
+                if (!silent) showToast("KSA finished! Click Step PRGA to encrypt message bytes.");
+                return false;
+            }
+
+            const N = sim.N;
+            const i = sim.ksaIdx;
+            const j = (sim.ptrJ + sim.S[i] + sim.T[i]) % N;
+
+            const tmp = sim.S[i];
+            sim.S[i] = sim.S[j];
+            sim.S[j] = tmp;
+
+            sim.ptrI = i;
+            sim.ptrJ = j;
+            sim.ptrT = -1;
+            sim.ksaIdx++;
+
+            if (sim.ksaIdx >= N) {
+                sim.phase = "PRGA";
+                sim.ptrI = 0;
+                sim.ptrJ = 0;
+                if (!silent) {
+                    renderSBox();
+                    setStepBanner(`KSA Complete (${N} swaps). Ready for PRGA.`, "i = 0, j = 0, t = -", "PRGA Ready");
+                }
+            } else if (!silent) {
+                renderSBox();
+                setStepBanner(`KSA ${i + 1}/${N}: Swap S[${i}] ↔ S[${j}]`, `i = ${i}, j = ${j}, T[${i}] = 0x${toHex(sim.T[i])}`, `KSA ${i + 1}/${N}`);
+            }
+            return true;
+        }
+
+        function stepPRGA(silent = false) {
+            if (sim.phase === "IDLE") {
+                if (!prepareSimulationState()) return false;
+            }
+            while (sim.phase === "KSA") {
+                stepKSA(true);
+            }
+            if (sim.phase === "DONE") {
+                if (!silent) showToast("All message bytes processed! Click Reset S-Box to restart.");
+                return false;
+            }
+
+            const N = sim.N;
+            const idx = sim.prgaIdx;
+            const i = (sim.ptrI + 1) % N;
+            const j = (sim.ptrJ + sim.S[i]) % N;
+
+            const tmp = sim.S[i];
+            sim.S[i] = sim.S[j];
+            sim.S[j] = tmp;
+
+            const t = (sim.S[i] + sim.S[j]) % N;
+            const k = sim.S[t];
+            const pByte = sim.plainBytes[idx];
+            const cByte = pByte ^ k;
+
+            sim.ptrI = i;
+            sim.ptrJ = j;
+            sim.ptrT = t;
+            sim.keystreamBytes.push(k);
+            sim.cipherBytes.push(cByte);
+
+            sim.traceRows.push({
+                step: idx + 1,
+                char: printableChar(pByte),
+                pByte,
+                i,
+                j,
+                t,
+                k,
+                cByte
+            });
+
+            sim.prgaIdx++;
+            if (sim.prgaIdx >= sim.plainBytes.length) {
+                sim.phase = "DONE";
+            }
+
+            if (!silent) {
+                renderSBox();
+                renderEncryptionOutputs();
+                renderTraceTable();
+                setStepBanner(
+                    `PRGA #${idx + 1}: k = S[${t}] = 0x${toHex(k)} | 0x${toHex(pByte)} ⊕ 0x${toHex(k)} = 0x${toHex(cByte)}`,
+                    `i = ${i}, j = ${j}, t = ${t}`,
+                    sim.phase === "DONE" ? "Completed" : `PRGA ${sim.prgaIdx}/${sim.plainBytes.length}`
+                );
+            }
+            return true;
+        }
+
+        function runEncryption() {
+            stopAutoPlay();
+            resetSBoxOnly();
+            if (!prepareSimulationState()) return;
+            while (sim.phase === "KSA") stepKSA(true);
+            while (sim.phase === "PRGA") stepPRGA(true);
+
+            renderSBox();
+            renderEncryptionOutputs();
+            renderTraceTable();
+            const last = sim.traceRows[sim.traceRows.length - 1];
+            setStepBanner(
+                `Encrypted ${sim.plainBytes.length} byte${sim.plainBytes.length === 1 ? "" : "s"} (${sim.N}-byte S-Box).`,
+                last ? `Final i = ${last.i}, j = ${last.j}, t = ${last.t}` : "Done",
+                "Completed"
+            );
+        }
+
+        function sendToDecryptor() {
+            const hexCipher = document.getElementById("out-cipher-hex").textContent.trim();
+            if (!hexCipher) {
+                showToast("Encrypt a message first.");
+                return;
+            }
+            document.getElementById("dec-key-input").value = document.getElementById("enc-key-input").value;
+            document.getElementById("dec-cipher-input").value = hexCipher;
+            runDecryption();
+            showToast("Sent ciphertext to Decryptor and verified!");
+        }
+
+        function runDecryption() {
+            try {
+                const rawKey = document.getElementById("dec-key-input").value;
+                const rawCipher = document.getElementById("dec-cipher-input").value;
+                const kBytes = getKeyBytes(rawKey, sim.keyFormat);
+                const cBytes = parseCipherInput(rawCipher);
+
+                if (cBytes.length === 0) {
+                    showToast("Paste Hex or Base64 ciphertext to decrypt.");
+                    return;
+                }
+
+                // Pure stateless RC4 pass for decryption
+                const N = sim.N;
+                const S = Array.from({ length: N }, (_, idx) => idx);
+                let j = 0;
+                for (let i = 0; i < N; i++) {
+                    j = (j + S[i] + (kBytes[i % kBytes.length] % N)) % N;
+                    [S[i], S[j]] = [S[j], S[i]];
+                }
+
+                let i = 0;
+                j = 0;
+                const recovered = new Uint8Array(cBytes.length);
+                for (let n = 0; n < cBytes.length; n++) {
+                    i = (i + 1) % N;
+                    j = (j + S[i]) % N;
+                    [S[i], S[j]] = [S[j], S[i]];
+                    const k = S[(S[i] + S[j]) % N];
+                    recovered[n] = cBytes[n] ^ k;
+                }
+
+                const recoveredText = decoder.decode(recovered);
+                document.getElementById("out-recovered-plain").textContent = recoveredText;
+
+                const originalText = document.getElementById("enc-plain-input").value;
+                const badge = document.getElementById("dec-verified-badge");
+                if (recoveredText === originalText) {
+                    badge.classList.add("show");
+                } else {
+                    badge.classList.remove("show");
+                }
+            } catch (err) {
+                showToast(err.message);
+            }
+        }
+
+        /* --------------------------------------------------------------------------
+           AUTO-PLAY ANIMATION
+           -------------------------------------------------------------------------- */
+        function toggleAutoPlay() {
+            if (sim.timer) {
+                stopAutoPlay();
+                return;
+            }
+            if (sim.phase === "DONE") resetSBoxOnly();
+            if (sim.phase === "IDLE" && !prepareSimulationState()) return;
+
+            const btn = document.getElementById("btn-autoplay");
+            btn.textContent = "Pause";
+
+            const loop = () => {
+                const speedVal = parseInt(document.getElementById("anim-speed").value, 10);
+                const delay = 400 - speedVal;
+                let ok = false;
+                if (sim.phase === "KSA") ok = stepKSA(false);
+                else if (sim.phase === "PRGA") ok = stepPRGA(false);
+
+                if (ok && sim.phase !== "DONE") {
+                    sim.timer = setTimeout(loop, delay);
+                } else {
+                    stopAutoPlay();
+                }
+            };
+            loop();
+        }
+
+        function stopAutoPlay() {
+            if (sim.timer) {
+                clearTimeout(sim.timer);
+                sim.timer = null;
+            }
+            const btn = document.getElementById("btn-autoplay");
+            if (btn) btn.textContent = "Auto-Play";
+        }
+
+        document.getElementById("anim-speed").addEventListener("input", function () {
+            const v = parseInt(this.value, 10);
+            document.getElementById("anim-speed-text").textContent = v > 290 ? "Fast" : v > 140 ? "Medium" : "Slow";
+        });
+
+        /* --------------------------------------------------------------------------
+           DOM RENDERERS
+           -------------------------------------------------------------------------- */
+        function setStepBanner(left, right, pill) {
+            document.getElementById("step-log-banner").innerHTML = `<span>${left}</span><strong>${right}</strong>`;
+            document.getElementById("sbox-phase-pill").textContent = pill;
+        }
+
+        function renderSBox() {
+            const grid = document.getElementById("sbox-grid");
+            const width = sim.N === 16 ? 1 : 2;
+            const frag = document.createDocumentFragment();
+
+            for (let idx = 0; idx < sim.N; idx++) {
+                const cell = document.createElement("div");
+                cell.className = "sbox-cell";
+                cell.textContent = toHex(sim.S[idx], width);
+                cell.title = `S[${idx}] = 0x${toHex(sim.S[idx], 2)} (${sim.S[idx]})`;
+
+                if (idx === sim.ptrT) cell.classList.add("hl-t");
+                else if (idx === sim.ptrI && idx === sim.ptrJ) cell.classList.add("hl-ij");
+                else if (idx === sim.ptrI) cell.classList.add("hl-i");
+                else if (idx === sim.ptrJ) cell.classList.add("hl-j");
+
+                frag.appendChild(cell);
+            }
+            grid.innerHTML = "";
+            grid.appendChild(frag);
+        }
+
+        function renderEncryptionOutputs() {
+            const ksArr = new Uint8Array(sim.keystreamBytes);
+            const cArr = new Uint8Array(sim.cipherBytes);
+            document.getElementById("out-keystream").textContent = bytesToHex(ksArr);
+            document.getElementById("out-cipher-hex").textContent = bytesToHex(cArr);
+            document.getElementById("out-cipher-b64").textContent = bytesToBase64(cArr);
+        }
+
+        function renderTraceTable() {
+            const tbody = document.getElementById("trace-table-body");
+            document.getElementById("trace-count-badge").textContent = `${sim.traceRows.length} byte${sim.traceRows.length === 1 ? "" : "s"} traced`;
+
+            if (sim.traceRows.length === 0) return;
+            tbody.innerHTML = sim.traceRows.map((r, idx) => `
+                <tr class="${idx === sim.traceRows.length - 1 ? "latest-row" : ""}">
+                    <td>#${r.step}</td>
+                    <td>${r.char}</td>
+                    <td>0x${toHex(r.pByte)}</td>
+                    <td>i=${r.i}, j=${r.j} &rarr; t=${r.t}</td>
+                    <td>0x${toHex(r.k)}</td>
+                    <td>0x${toHex(r.pByte)} &oplus; 0x${toHex(r.k)}</td>
+                    <td><strong>0x${toHex(r.cByte)}</strong></td>
+                </tr>
+            `).join("");
+        }
+
+        /* --------------------------------------------------------------------------
+           SELF-EVALUATION QUIZ
+           -------------------------------------------------------------------------- */
+        const quizData = [
+            {
+                q: "1. What is the size of the internal permutation array S in standard RC4?",
+                opts: ["64 bytes", "128 bytes", "256 bytes (0..255)", "512 bytes"],
+                ans: 2,
+                exp: "Standard RC4 uses a 256-byte state array S[0..255] initialized with S[i] = i."
+            },
+            {
+                q: "2. Which bitwise operation combines the plaintext byte P with the keystream byte k?",
+                opts: ["Bitwise AND (&)", "Bitwise OR (|)", "Bitwise XOR (⊕)", "Modular Addition (+)"],
+                ans: 2,
+                exp: "RC4 uses bitwise XOR (C = P ⊕ k) because XOR is self-inverting: (P ⊕ k) ⊕ k = P."
+            },
+            {
+                q: "3. In PRGA, how is the output keystream byte k chosen after swapping S[i] and S[j]?",
+                opts: ["k = S[i]", "k = S[j]", "k = S[(S[i] + S[j]) mod 256]", "k = i ⊕ j"],
+                ans: 2,
+                exp: "PRGA computes t = (S[i] + S[j]) mod 256 and outputs S[t] as the keystream byte."
+            },
+            {
+                q: "4. Does RC4 require block padding like AES or DES?",
+                opts: ["Yes, 16-byte padding", "Yes, 8-byte padding", "No, because it encrypts 1 byte at a time as a stream cipher", "Only for emojis"],
+                ans: 2,
+                exp: "As a byte-oriented stream cipher, RC4 processes arbitrary lengths without padding."
+            }
+        ];
+
+        function initQuiz() {
+            document.getElementById("quiz-score-pill").textContent = "4 Questions";
+            document.getElementById("quiz-list").innerHTML = quizData.map((item, qi) => `
+                <div class="quiz-card">
+                    <div class="quiz-question">${item.q}</div>
+                    ${item.opts.map((opt, oi) => `
+                        <label class="quiz-opt">
+                            <input type="radio" name="vq${qi}" value="${oi}">
+                            <span>${opt}</span>
+                        </label>
+                    `).join("")}
+                    <div id="vq-res-${qi}" class="quiz-result"></div>
+                </div>
+            `).join("");
+        }
+
+        function submitQuiz() {
+            let score = 0;
+            quizData.forEach((item, qi) => {
+                const picked = document.querySelector(`input[name="vq${qi}"]:checked`);
+                const box = document.getElementById(`vq-res-${qi}`);
+                if (!picked) {
+                    box.className = "quiz-result fail";
+                    box.textContent = "Please select an answer.";
+                    return;
+                }
+                if (parseInt(picked.value, 10) === item.ans) {
+                    score++;
+                    box.className = "quiz-result pass";
+                    box.textContent = "Correct! " + item.exp;
+                } else {
+                    box.className = "quiz-result fail";
+                    box.textContent = "Incorrect. " + item.exp;
+                }
+            });
+            document.getElementById("quiz-score-pill").textContent = `Score: ${score} / ${quizData.length}`;
+            showToast(`Quiz Score: ${score} / ${quizData.length}`);
+        }
+
+        /* --------------------------------------------------------------------------
+           INITIALIZATION
+           -------------------------------------------------------------------------- */
+        window.addEventListener("DOMContentLoaded", () => {
+            initQuiz();
+            onWorkbenchInput();
+            runEncryption();
+            sendToDecryptor();
+        });
+    </script>
+</body>
+</html>
